@@ -20,14 +20,18 @@ def threshold_from_fp(neg:list, target_fp:int) -> float :
     """
 
     # optim threshold to target_fp
+    '''
     thresh_score = lambda t: len(filter(lambda x: x>=t, neg))
-    #thresh, fp = 1, thresh_score(1)
 
-    # please dont flame me
     for x in map(lambda r: r/float(1000), range(1000, 0, -1)):
         fp = thresh_score(x)
         if fp < target_fp:
             return x
+    '''
+
+    # this should do
+    assert target_fp >= 1
+    return sorted(neg, reverse=True)[target_fp-1]
 
 def dir_from_threshold(pos:list, threshold:float, N:int) -> float:
     """
