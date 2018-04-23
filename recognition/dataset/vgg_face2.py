@@ -36,7 +36,8 @@ class vggDataset(torch.utils.data.Dataset):
         self.cpp_detector = face_detection.FaceDetection()
         self.cpp_detector.SetLandmarkExtractor("face_core/data/landmark_full.dat")
 
-        
+
+        self.data = None
         self._generate_descriptors()
 
 
@@ -53,7 +54,7 @@ class vggDataset(torch.utils.data.Dataset):
         else:
             return None
         
-    def _store_descriptor(self, label, image_id, train=True) -> bool : 
+    def _store_descriptor(self, label, image_id) -> bool : 
         """
         Given a labeled identified image, attempts to extract a single face detection and its descriptors
         Might skip this process (case the descriptor seem to be saved already or a single face descriptor cannot be extracted)
@@ -62,7 +63,7 @@ class vggDataset(torch.utils.data.Dataset):
 
         
         image_fullpath = os.path.join(self.path_data, label, image_id)
-        pickle_outpath = os.path.join(self.path_descriptors, ('train' if train else 'test'), label, image_id)
+        pickle_outpath = os.path.join(self.path_descriptors, label, image_id)
 
         if os.path.isfile(pickle_outpath):
             if self.verbose: print("Already processed descriptor %s" % (os.path.join(label, image_id)))
@@ -88,9 +89,11 @@ class vggDataset(torch.utils.data.Dataset):
         """
                 
         # gets label->pathes mapping
+        min_samples = 15
+        max_samples = 10000
+        
 
         print("Building anno mapping")
-        l_train, l_test = 10, 5
         self.anno = {}
         
         i=0
@@ -102,13 +105,13 @@ class vggDataset(torch.utils.data.Dataset):
             #label = int(r.split('/')[-1][1:])
             images = f
 
-            if len(images) >= l_train+l_test+3:
+            if len(images) >= min_samples:
             #if len(images) >= 10 and len(images) <= 500:
                 images.sort()
                 
                 #print(label, len(images))
 
-                self.anno[label] = images[:l_train+l_test+3]
+                self.anno[label] = images[:max_samples]
                 ''' # using raw image ids and labels
                 self.anno[label] = []
 
@@ -127,46 +130,25 @@ class vggDataset(torch.utils.data.Dataset):
 
 
         # compute descriptors and store them
-        self.train_data, self.test_data = [], []
-        
+        self.data = []
         for label in self.anno:
-            # creates label dir for test and train
-            my_mkdir(os.path.join(self.path_descriptors, 'train', label))
-            my_mkdir(os.path.join(self.path_descriptors, 'test', label))
-            exit
+
+            # creates label dir 
+
+            my_mkdir(os.path.join(self.path_descriptors, label))
             
             i_ids = self.anno[label]
 
             #np_label = np.array([label]).astype('int')
-            for i_id in i_ids[:l_train]:
+            for i_id in i_ids:
                 if self._store_descriptor(label, i_id):
-                    self.train_data += [{'label': label, 'descriptor_path': os.path.join(self.path_descriptors, 'train', label, i_id)}]
-                
-            for i_id in i_ids[l_test:]:
-                if self._store_descriptor(label, i_id, train=False):
-                    self.test_data += [{'label': label, 'descriptor_path': os.path.join(self.path_descriptors, 'test', label, i_id)}]
+                    self.data += [{'label': label, 'descriptor_path': os.path.join(self.path_descriptors, label, i_id)}]
+            
                 
         print("Processing/storage done")
 
 
     
-    def _set_descriptors_paths(self):
-        """
-        Initializes self.train_images and self.test_images, as a list of pickle paths
-        """
-        #self.train_images = []
-        for r,d,f in os.walk(os.path.join(self.path_descriptors, 'train')):
-            for i in f:
-                fullpath = os.path.join(r, i)
-                #self.train_images += [fullpath]
-
-        # that f dangerous copy n paste (test / train)
-        #self.test_images = []
-        for r,d,f in os.walk(os.path.join(self.path_descriptors, 'test')):
-            for i in f:
-                fullpath = os.path.join(r, i)
-                #self.test_images += [fullpath]
-
     
     def _get_classifier_data(self, fullpath, train=False):
         """
@@ -181,12 +163,10 @@ class vggDataset(torch.utils.data.Dataset):
         
                 
     def __len__(self):
-        return len(self.train_images)
+        return len(self.data)
 
     def __getitem__(self, index):
-        #X, y = self.train_images[index]['descriptor'], self.train_images[index]['label']
-        #X, y = torch.DoubleTensor(X), int(y)#torch.LongTensor(y)
-        X, y = self._get_classifier_data(self.train_images[index])
+        X, y = self._get_classifier_data(self.data[index])
 
         #print(X.shape, y.shape)
         
