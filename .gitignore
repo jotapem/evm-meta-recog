@@ -2,6 +2,7 @@
 
 data
 recognition/models
+recognition/trainer/results/*/
 .idea
 test.jpg
 # Byte-compiled / optimized / DLL files
