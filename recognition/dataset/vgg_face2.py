@@ -19,10 +19,9 @@ def load_pickle(p):
         ret = pickle.load(pickle_in)
     return ret
 
-class vggDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path, subdir, verbose=False, persons_limit=None):
+class vggDataset():#torch.utils.data.Dataset):
+    def __init__(self, data_path, subdir, verbose=False):
         self.verbose = verbose
-        self.persons_limit = persons_limit
         
         self.path_root = data_path
         self.path_data = os.path.join(self.path_root, subdir)
@@ -38,7 +37,11 @@ class vggDataset(torch.utils.data.Dataset):
 
 
         self.data = None
-        self._generate_descriptors()
+
+        # gets label->pathes mapping
+        print("Building anno mapping")
+        self._set_anno()
+        print("Mapping done")
 
 
 
@@ -81,22 +84,12 @@ class vggDataset(torch.utils.data.Dataset):
             else:
                 return False
 
-
-    
-    def _generate_descriptors(self):
+    def _set_anno(self):
         """
-        Process raw_images in self.path_data generating descriptors, storing them on self.path_descriptors
         """
-                
-        # gets label->pathes mapping
-        min_samples = 15
-        max_samples = 10000
-        
 
-        print("Building anno mapping")
         self.anno = {}
         
-        i=0
         for r,d,f in os.walk(self.path_data):
             if (r == self.path_data):
                 continue
@@ -105,70 +98,69 @@ class vggDataset(torch.utils.data.Dataset):
             #label = int(r.split('/')[-1][1:])
             images = f
 
-            if len(images) >= min_samples:
-            #if len(images) >= 10 and len(images) <= 500:
-                images.sort()
-                
-                #print(label, len(images))
+            #if len(images) >= self.person_sample_min: # unnecessary cut here
+            images.sort()
+            self.anno[label] = images                
 
-                self.anno[label] = images[:max_samples]
-                ''' # using raw image ids and labels
-                self.anno[label] = []
+            #print(label, len(images))
 
-                for img_path in images:
-                    img_fullpath = os.path.join(r, img_path)
-                    self.anno[label].append(img_fullpath)
-                '''
+            
+    def get_descriptors(self, persons_limit=None, person_sample_min=0, person_sample_max=None):
+        """
+        Process raw_images in self.path_data generating descriptors, storing them on self.path_descriptors
+        """
 
-            i += 1
-            if (self.persons_limit and i>=self.persons_limit): break
-
-        print("Mapping done")
-        #print(self.anno)
-        print(sorted(self.anno.keys()))
-
-
+        labels = sorted(self.anno.keys()) # could be shuffle or smte
+        print("%d labels" % (len(labels)))
+        
 
         # compute descriptors and store them
-        self.data = []
-        for label in self.anno:
-
+        descriptors = {}
+        people_counter = 0
+        
+        for label in labels:
+            person_data = []
+            
             # creates label dir 
-
             my_mkdir(os.path.join(self.path_descriptors, label))
             
             i_ids = self.anno[label]
 
             #np_label = np.array([label]).astype('int')
+            sample_counter = 0
             for i_id in i_ids:
                 if self._store_descriptor(label, i_id):
-                    self.data += [{'label': label, 'descriptor_path': os.path.join(self.path_descriptors, label, i_id)}]
-            
+                    person_data += [os.path.join(self.path_descriptors, label, i_id)]
+                    sample_counter += 1
+                    if person_sample_max is not None and sample_counter >= person_sample_max:
+                        break
+
+            if len(person_data) >= person_sample_min:
+                descriptors.update({label: person_data})
+                people_counter += 1
+                if persons_limit is not None and people_counter >= persons_limit:
+                    break
                 
         print("Processing/storage done")
+        return descriptors
 
-
-    
-    
-    def _get_classifier_data(self, fullpath, train=False):
+    def get_training_data(self, samples_train:int, samples_test:int=0, persons_limit:int=None) -> list:
         """
-        Loads X, y given data in self.(train/test)_data
+        Input interface is how many persons (possibly how many there is), how many samples in training (gallery control) and how many samples for test (possibly none)
+        Output interface is a list of (X,Y) numpy stuff
         """
-        mode_path = 'train' if train else 'test'
+        n_samples = (samples_train + samples_test)
         
-        label = fullpath.split('/')[-2]
-        descriptor = load_pickle(fullpath)
+        descriptors = self.get_descriptors(persons_limit=persons_limit, person_sample_min=n_samples, person_sample_max=n_samples)
 
-        return descriptor, label
-        
-                
-    def __len__(self):
-        return len(self.data)
+        X_train, Y_train, X_test, Y_test = [], [], [], []
+        for label, pathes in descriptors.items():
+            pathes_train, pathes_test = pathes[:samples_train], pathes[-samples_test:]
 
-    def __getitem__(self, index):
-        X, y = self._get_classifier_data(self.data[index])
+            X_train += list(map(lambda x: load_pickle(x), pathes_train))
+            X_test += list(map(lambda x: load_pickle(x), pathes_test))
+            Y_train += list(map(lambda x: np.array(label), pathes_train))
+            Y_test += list(map(lambda x: np.array(label), pathes_test))
+    
+        return (np.array(X_train), np.array(Y_train)), (np.array(X_test), np.array(Y_test))
 
-        #print(X.shape, y.shape)
-        
-        return X, y
-        
