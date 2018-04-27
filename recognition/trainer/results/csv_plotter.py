@@ -13,7 +13,7 @@ def column_from_csv(content, column):
 
 def grosso(experiment_folder, target_csv, y_keys):
     results_path = os.path.join('recognition', 'trainer', 'results', experiment_folder)
-    graph_name = target_csv.split('.')[-2]
+    graph_name = ' '.join([experiment_folder] + target_csv.split('.')[-2].split('_'))
     print(graph_name)
 
     content = load_content(os.path.join(results_path, target_csv))
@@ -29,22 +29,23 @@ def grosso(experiment_folder, target_csv, y_keys):
         ax.plot(column_from_csv(content, 'x'),
                 column_from_csv(content, y_key),
                 label=y_key)
-    plt.title('titulo')
+    plt.title(graph_name)
     ax.legend()
 
     fig.savefig(os.path.join(results_path, "%s.%s" % (graph_name, 'png')))
 
 
 def main():
-    for estim in ['knn', 'evm']:
-        for test in ['gallery', 'hidden']:
-            target_csv = "%s_%s_test.csv" % (estim, test)
+    for exp in ['10pp', '20pp', '50pp']:
+        for estim in ['knn', 'evm']:
+            for test in ['gallery', 'hidden']:
+                target_csv = "%s_%s_test.csv" % (estim, test)
 
-            keys = {'gallery': ['tp', 'fp', 'fn'],
-                    'hidden': ['tn', 'fn', 'fp']
-            }[test]
-            
-            grosso('10pp', target_csv, keys)
+                keys = {'gallery': ['tp', 'fp', 'fn'],
+                        'hidden': ['tn', 'fp']
+                }[test]
+
+                grosso(exp, target_csv, keys)
 
 
 if __name__ == '__main__':
