@@ -1,5 +1,6 @@
 import copy
 import csv
+import time
 import os
 import sys
 sys.path.append(os.getcwd())
@@ -18,6 +19,16 @@ from recognition.dataset.vgg_face2 import vggDataset
 from recognition.estimator.evm import EVM
 from recognition.estimator.knn import KNN
 from recognition.metrics.unconstrained_fr import all_dirs, pos_neg_from_prediction
+
+
+def measure_call(call, n_samples=1000):
+    times = []
+    for i in range(n_samples):
+        start = time.time()
+        call()
+        end = time.time()
+        times += [1000 * (end - start)] # to ms
+    return np.mean(times), np.var(times)
 
 def pickle_load(path):
     with open(path, 'rb') as pickle_in:
@@ -139,17 +150,49 @@ def experiment(samples_per_person:int, persons:int):
     '''
 
     # logging test
-    OSTs = [0.0, 0.01, 0.05, 0.1, 0.2]
+    OSTs = [0.0, 0.001, 0.005, 0.01, 0.02]
     test_estimators = expand_evm(estimators['EVM'], OSTs)
     test_estimators.update({'KNN': estimators['KNN']})
 
     test_logging(test_estimators, test_data, os.path.join("%dpp" % samples_per_person, 'gallery_test.csv'))
     hidden_data, _ = hidden_dataset.get_training_data(20) # this gives 500*20 = 10k hidden samples
     test_logging(test_estimators, hidden_data, os.path.join("%dpp" % samples_per_person, 'hidden_test.csv'))
+
+
+def performance_eval(estim, n_samples):
+    hidden_dataset = vggDataset('/media/Datasets/vgg_face2', 'test')#, verbose=True)
+    #gallery_dataset = vggDataset('/media/Datasets/vgg_face2', 'train_aligned')
+
+    #estim = EVM(open_set_threshold=0.01)
+        
+    fit_data, _ = hidden_dataset.get_training_data(20, 0, 2)
+    fit_x, fit_y = fit_data
+    print("doing a fit")
+    fit_t = measure_call(lambda: estim.fit(fit_x, fit_y), n_samples=n_samples)
+    print(fit_t)
+
+    
+    predict_data, _ = hidden_dataset.get_training_data(1, 0, 1)
+    pred_x, _ = predict_data
+    print("doing a predict")
+    pred_t = measure_call(lambda: estim.predict(pred_x), n_samples=n_samples)
+    print(pred_t)
+
+    return {'fit': fit_t, 'pred': pred_t}
+    
+    
     
 if __name__ == '__main__':
+    performance = {
+        'KNN': performance_eval(load_model('KNN.pkl'),n_samples=100),
+        'EVM': performance_eval(load_model('EVM.pkl'),n_samples=100)
+    }
+    print(performance)
+    '''
     for pp in [10, 20, 50]:
-        experiment(pp, 6000)
+        experiment(pp, 8000)
+    '''
+    
     
 
     '''
