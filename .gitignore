@@ -1,5 +1,7 @@
 # Project
 
+*nohup.out
+
 data
 recognition/models
 recognition/trainer/results/*/
