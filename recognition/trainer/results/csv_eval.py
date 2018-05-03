@@ -1,6 +1,11 @@
+import csv
 import operator
 import os
-import csv
+import sys
+sys.path.append(os.getcwd())
+
+
+from recognition.metrics import unconstrained_fr
 
 _UK = 'Unknown'
 
@@ -25,6 +30,7 @@ def load_content(csv_path, estim_name=None):
 
     #estimators = estimators_in_content(content)
     #print("Loaded csv at %s containing the estimators %s" % (csv_path, estimators))
+
     return content
 
 def write_content(csv_path, content):
@@ -38,15 +44,27 @@ def write_content(csv_path, content):
             writer.writerow(row)
             #print(row)
 
-            
-    
-
 def hide_truth(content):
     hidden_content = []
 
     for row in content:
-        hidden_row = row
+        hidden_row = dict(row)
         hidden_row.update({'truth': _UK})
+
+        hidden_content.append(hidden_row)
+
+    return hidden_content
+
+def hide_pred(content, thresh, logic='restrictive'):
+    assert logic in ['restrictive', 'permissive']
+
+    hidden_content = []
+
+    for row in content:
+        hidden_row = dict(row)
+        v = float(row['value'])
+        if ((logic is 'restrictive' and v > thresh) or (logic is 'permissive' and v < thresh)):
+            hidden_row.update({'prediction': _UK})
 
         hidden_content.append(hidden_row)
 
@@ -88,12 +106,13 @@ def eval_evm(content)->dict:
                 count_mm(row['prediction'])
 
     mismatches = sorted(mismatches.items(), key=operator.itemgetter(1))
-    print(mismatches)
+    #print(mismatches)
 
     assert counter['total'] == sum([counter['tp'], counter['fp'], counter['tn'], counter['fn']])
     return relative_counter(counter)
 
 def eval_knn(content, p_threshold:float)->dict:
+    '''
     counter = {
         'total':0,
         'tp':0, 'fp': 0,
@@ -116,14 +135,20 @@ def eval_knn(content, p_threshold:float)->dict:
                 counter['tp'] += 1
             else:
                 counter['fp'] += 1
-
+    '''
+    h_content = hide_pred(content, p_threshold)
+    g_eval = eval_evm(h_content)
+    #print(p_threshold, g_eval)
+    return g_eval
+    
     assert counter['total'] == sum([counter['tp'], counter['fp'], counter['tn'], counter['fn']])
     return relative_counter(counter)
 
 def main():
     results_path = os.path.join('recognition', 'trainer', 'results')
+    samples_pp = ['10pp']#, '20pp', '50pp']
 
-    for exp in ['10pp', '20pp', '50pp']:
+    for exp in samples_pp:
         gallery = load_content(os.path.join(results_path, exp, 'gallery_test.csv'))
         hidden = hide_truth(load_content(os.path.join(results_path, '10pp', 'hidden_test.csv')))
 
@@ -134,7 +159,7 @@ def main():
         for i in range(len(evm_names)):
             evm_name = evm_names[i]
             ost = int(evm_name[3:-1]) / 1000.
-            print(evm_name, ost)
+            #print(evm_name, ost)
 
             eval_hidden = eval_evm(estimator_content(hidden, evm_name))
             eval_hidden.update({'x': ost})
@@ -146,7 +171,7 @@ def main():
 
         many = 10
         for i in range(0, many+1):
-            knn_thresh = i / many
+            knn_thresh = i / float(many)
             #print("KNN", knn_thresh)
 
             eval_hidden = eval_knn(estimator_content(hidden, 'KNN'), knn_thresh)
