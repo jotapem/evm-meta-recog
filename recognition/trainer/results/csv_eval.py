@@ -127,21 +127,21 @@ def main():
         gallery = load_content(os.path.join(results_path, exp, 'gallery_test.csv'))
         hidden = hide_truth(load_content(os.path.join(results_path, '10pp', 'hidden_test.csv')))
 
-        OSTs = [0.0, 0.01, 0.05, 0.1, 0.2]
-        evm_names = list(map(lambda x: "EVM%dm" % (x*1000), OSTs))
+        evm_names = list(filter(lambda x: "EVM" in x, estimators_in_content(gallery)))
         print(evm_names)
 
         hidden_content, gallery_content = {'KNN': [], 'EVM': []}, {'KNN': [], 'EVM': []}
-        for i in range(len(OSTs)):
+        for i in range(len(evm_names)):
             evm_name = evm_names[i]
-            #print(evm_name)
+            ost = int(evm_name[3:-1]) / 1000.
+            print(evm_name, ost)
 
             eval_hidden = eval_evm(estimator_content(hidden, evm_name))
-            eval_hidden.update({'x': OSTs[i]})
+            eval_hidden.update({'x': ost})
             hidden_content['EVM'].append(eval_hidden)
 
             eval_gallery = eval_evm(estimator_content(gallery, evm_name))
-            eval_gallery.update({'x': OSTs[i]})
+            eval_gallery.update({'x': ost})
             gallery_content['EVM'].append(eval_gallery)
 
         many = 10
