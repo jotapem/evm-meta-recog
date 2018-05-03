@@ -105,7 +105,7 @@ class vggDataset():#torch.utils.data.Dataset):
             #print(label, len(images))
 
             
-    def get_descriptors(self, persons_limit=None, person_sample_min=0, person_sample_max=None):
+    def get_descriptors(self, persons_limit=None, person_sample_min=0, person_sample_max=None) -> dict:
         """
         Process raw_images in self.path_data generating descriptors, storing them on self.path_descriptors
         """
@@ -146,6 +146,8 @@ class vggDataset():#torch.utils.data.Dataset):
 
     def get_training_data(self, samples_train:int, samples_test:int=0, persons_limit:int=None) -> list:
         """
+        this is an alternative for using torchvision dataloaders (could output an iterator)
+
         Input interface is how many persons (possibly how many there is), how many samples in training (gallery control) and how many samples for test (possibly none)
         Output interface is a list of (X,Y) numpy stuff
         """
@@ -164,3 +166,6 @@ class vggDataset():#torch.utils.data.Dataset):
     
         return (np.array(X_train), np.array(Y_train)), (np.array(X_test), np.array(Y_test))
 
+
+    def __torch_dataset__(self):
+        return torch.datasets.ImageFolder(self.path_descriptors, loader=load_pickle)
