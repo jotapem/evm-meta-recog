@@ -20,14 +20,24 @@ from recognition.estimator.evm import EVM
 from recognition.estimator.knn import KNN
 from recognition.metrics.unconstrained_fr import all_dirs, pos_neg_from_prediction
 
+def print_dict(d):
+    for k in sorted(d.keys(),reverse=True):
+        v = d[k]
+    #for k,v in d.items():
+        print("[%s] \n %s \n" % (k,v))
 
-def measure_call(call, n_samples=1000):
+def measure_call(call, n_samples=1000, verbose=False):
     times = []
     for i in range(n_samples):
         start = time.time()
         call()
         end = time.time()
         times += [1000 * (end - start)] # to ms
+
+    if verbose:
+        print(times)
+    
+    times = times[1:]
     return np.mean(times), np.var(times)
 
 def pickle_load(path):
@@ -159,35 +169,57 @@ def experiment(samples_per_person:int, persons:int):
     test_logging(test_estimators, hidden_data, os.path.join("%dpp" % samples_per_person, 'hidden_test.csv'))
 
 
-def performance_eval(estim, n_samples):
-    hidden_dataset = vggDataset('/media/Datasets/vgg_face2', 'test')#, verbose=True)
-    #gallery_dataset = vggDataset('/media/Datasets/vgg_face2', 'train_aligned')
+def performance_eval(estim, fit_data, predict_data, n_samples:int, verbose=True):
+    def vprint(s):
+        if verbose:
+            print(s)
+    
+    
 
     #estim = EVM(open_set_threshold=0.01)
-        
-    fit_data, _ = hidden_dataset.get_training_data(20, 0, 2)
+
     fit_x, fit_y = fit_data
-    print("doing a fit")
-    fit_t = measure_call(lambda: estim.fit(fit_x, fit_y), n_samples=n_samples)
-    print(fit_t)
+    vprint("doing a fit")
+    fit_t = measure_call(lambda: estim.fit(fit_x, fit_y), verbose=True, n_samples=5)#n_samples)
+    vprint(fit_t)
 
     
-    predict_data, _ = hidden_dataset.get_training_data(1, 0, 1)
-    pred_x, _ = predict_data
-    print("doing a predict")
+    pred_x, _ = predict_data    
+    vprint("doing a predict")
     pred_t = measure_call(lambda: estim.predict(pred_x), n_samples=n_samples)
-    print(pred_t)
+    vprint(pred_t)
 
     return {'fit': fit_t, 'pred': pred_t}
+
+def performance_multieval(estims:dict, samples_per_person:int, persons:int, n_samples:int, verbose=False):
+    #hidden_dataset = vggDataset('/media/Datasets/vgg_face2', 'test')#, verbose=True)
+    gallery_dataset = vggDataset('/media/Datasets/vgg_face2', 'train_aligned')
+
+    fit_data, _ = gallery_dataset.get_training_data(samples_per_person, 0, persons)
+    predict_data, _ = gallery_dataset.get_training_data(1, 0, 1)
     
+    performance = {}
+    for k in sorted(models.keys()):
+        print("\nEvaluating %s with %d persons and %d samples-per-person" % (k, persons, samples_per_person))
+        performance.update({k: performance_eval(models[k], fit_data, predict_data, n_samples=100, verbose=verbose)})
+
+    print_dict(performance)
     
     
 if __name__ == '__main__':
+    #models = {("EVM_Red_%4d" % int(r)): EVM(redundancy_rate=r/1000.) for r in range(0, 1000, 25)}
+    models = {("EVM_BiasD_%4d" % int(r)): EVM(redundancy_rate=r/1000., biased_distance=r/1000.) for r in range(400, 1000, 50)}
+    models.update({"KNN": KNN(1)})
+    #print(models)
+
+    performance_multieval(models, 20, 1500, n_samples=100, verbose=True)
+    '''
     performance = {
         'KNN': performance_eval(load_model('KNN.pkl'),n_samples=100),
         'EVM': performance_eval(load_model('EVM.pkl'),n_samples=100)
     }
     print(performance)
+    '''
     '''
     for pp in [10, 20, 50]:
         experiment(pp, 8000)
