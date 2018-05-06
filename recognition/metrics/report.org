@@ -1,0 +1,65 @@
+* Surveillance Face Recognition Challenge (arxiv 1804.09691)
+
+** Face Verification
+All classifiers should output a similiarity score
+Metrics are threshold functions
+
+*** False Acceptance Rate [FAR(t)]
+Fraction of unmatched pairs (on groud truth) that received a similirity score higher than the threshold (on prediction)
+
+U unmatched pairs scores 
+FAR(t) = |{s > t for s in U}| / |U|
+
+*** False Rejection Rate [FRR(t)]
+Fraction of matched pairs that received a similarity score lower than the threshold
+
+M matched pairs scores
+FRR(t) = |{s < t for s in M}| / |M|
+
+*** True Rejection Rate [TRR(t)]
+Complement of FRR
+
+TRR(t) = 1 - FRR(t)
+
+** Face Identification
+SHOULD READ MORE
+
+
+* Unconstrained Face Detection and Open-Set Face Recognition Challenge (arxiv 1708.02337)
+Evaluation is chapter 4
+
+** Face Detection
+
+*** Bouding Box Accept [J(G,D)]
+Do not use Intersection Over Union exactly, given different methods will have different detectors. The ground truth bounding boxes are relatively large so the "union part" tries to not penalize small detections.
+COULD PUT THE EQUATION
+
+(Probably just useful when training multiple detector with different detections size ; still could do something more accurate if these sizes are known)
+
+*** THERE IS MORE!!
+
+** Face Recognition
+S- negative group, contains false positives (detected uknowns faces labeled as knowns or mismatches) similarity scores
+S+ positive group, contains true positives (detected known faces where predicted label matches ground truth) similiarity scores
+N total number of known faces
+
+Note that 'unknown' predictions and undetected faces are treated like the same. 
+Also, [ |S-|+|S+| != N  ] since known faces might not be detected or predicted as unknown, the same way unkown faces might be detected.
+
+*** Decision Threshold [T(FI)]
+Takes a integer FI that represents how many members of S- would not be hidden by T.
+
+Gives a threshold for similarity scores controlled by how many false identifications are allowed to happen.
+
+T(FI) = argmax(t) |{s >= t for s in S-}| < FI
+
+*** Detected and Identified Rate [DIR]
+Given the decision threshold T(FI), counts how many members of S+ would pass the threshold T.
+As a rate, the count is divided by N.
+
+DIR(T(FI)) = |{s > T(FI) for s in S+}| / N
+
+DIR is as a function of FI as well.
+
+
+*** THERE IS MORE

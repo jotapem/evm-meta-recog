@@ -6,8 +6,8 @@ sys.path.append(os.getcwd())
 
 
 from recognition.metrics import unconstrained_fr
+_UK = unconstrained_fr._UK
 
-_UK = 'Unknown'
 
 
 # io
@@ -77,72 +77,11 @@ def relative_counter(counter):
     }
 
 # estimator specific eval
+def eval_predictions(content):
+    ev = unconstrained_fr.basic_metrics(content)
 
-def eval_evm(content)->dict:
-    counter = {
-        'total':0,
-        'tp':0, 'fp': 0,
-        'tn':0, 'fn': 0
-    }
-    mismatches = {} # key is a class
-    def count_mm(k):
-        if k not in mismatches.keys():
-            mismatches[k] = 0
-        mismatches[k] += 1
+    return relative_counter(ev)
 
-    for row in content:
-        counter['total'] += 1
-
-        if row['prediction'] == _UK: # classifier output is negative
-            if row['truth'] == _UK:
-                counter['tn'] += 1
-            else:
-                counter['fn'] += 1
-        else:
-            if row['prediction'] == row['truth']:
-                counter['tp'] += 1
-            else:
-                counter['fp'] += 1
-                count_mm(row['prediction'])
-
-    mismatches = sorted(mismatches.items(), key=operator.itemgetter(1))
-    #print(mismatches)
-
-    assert counter['total'] == sum([counter['tp'], counter['fp'], counter['tn'], counter['fn']])
-    return relative_counter(counter)
-
-def eval_knn(content, p_threshold:float)->dict:
-    '''
-    counter = {
-        'total':0,
-        'tp':0, 'fp': 0,
-        'tn':0, 'fn': 0
-    }
-
-    for row in content:
-        counter['total'] += 1
-
-        dist = float(row['value'])
-        p = dist #/ 0.6
-
-        if p > p_threshold: # classifier output is negative
-            if row['truth'] == _UK:
-                counter['tn'] += 1
-            else:
-                counter['fn'] += 1
-        else:
-            if row['truth'] == row['prediction']:
-                counter['tp'] += 1
-            else:
-                counter['fp'] += 1
-    '''
-    h_content = hide_pred(content, p_threshold)
-    g_eval = eval_evm(h_content)
-    #print(p_threshold, g_eval)
-    return g_eval
-    
-    assert counter['total'] == sum([counter['tp'], counter['fp'], counter['tn'], counter['fn']])
-    return relative_counter(counter)
 
 def main():
     results_path = os.path.join('recognition', 'trainer', 'results')
@@ -161,11 +100,11 @@ def main():
             ost = int(evm_name[3:-1]) / 1000.
             #print(evm_name, ost)
 
-            eval_hidden = eval_evm(estimator_content(hidden, evm_name))
+            eval_hidden = eval_predictions(estimator_content(hidden, evm_name))
             eval_hidden.update({'x': ost})
             hidden_content['EVM'].append(eval_hidden)
 
-            eval_gallery = eval_evm(estimator_content(gallery, evm_name))
+            eval_gallery = eval_predictions(estimator_content(gallery, evm_name))
             eval_gallery.update({'x': ost})
             gallery_content['EVM'].append(eval_gallery)
 
@@ -174,11 +113,11 @@ def main():
             knn_thresh = i / float(many)
             #print("KNN", knn_thresh)
 
-            eval_hidden = eval_knn(estimator_content(hidden, 'KNN'), knn_thresh)
+            eval_hidden = eval_predictions(hide_pred(estimator_content(hidden, 'KNN'), knn_thresh))
             eval_hidden.update({'x': knn_thresh})
             hidden_content['KNN'].append(eval_hidden)
 
-            eval_gallery = eval_knn(estimator_content(gallery, 'KNN'), knn_thresh)
+            eval_gallery = eval_predictions(hide_pred(estimator_content(gallery, 'KNN'), knn_thresh))
             eval_gallery.update({'x': knn_thresh})
             gallery_content['KNN'].append(eval_gallery)
 
