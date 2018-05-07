@@ -209,7 +209,7 @@ def performance_multieval(estims:dict, samples_per_person:int, persons:int, n_sa
 if __name__ == '__main__':
     #models = {("EVM_Red_%4d" % int(r)): EVM(redundancy_rate=r/1000.) for r in range(0, 1000, 25)}
     models = {("EVM_BiasD_%4d" % int(r)): EVM(redundancy_rate=r/1000., biased_distance=r/1000.) for r in range(400, 1000, 50)}
-    models.update({"KNN": KNN(1)})
+    models.update({"KNN": KNN(n_neighbors=1)})
     #print(models)
 
     performance_multieval(models, 20, 1500, n_samples=100, verbose=True)
