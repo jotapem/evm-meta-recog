@@ -16,8 +16,8 @@ import torch
 #import torchvision
 
 from recognition.dataset.vgg_face2 import vggDataset
-from recognition.estimator.evm import EVM
-from recognition.estimator.knn import KNN
+from classifiers.evm import EVM
+from classifiers.knn import KNN
 from recognition.metrics.unconstrained_fr import all_dirs, pos_neg_from_prediction
 
 def print_dict(d):
