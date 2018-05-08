@@ -84,7 +84,7 @@ def eval_predictions(content):
 
 
 def main():
-    results_path = os.path.join('recognition', 'trainer', 'results')
+    results_path = os.path.dirname(os.path.abspath(__file__))
     samples_pp = ['10pp']#, '20pp', '50pp']
 
     for exp in samples_pp:

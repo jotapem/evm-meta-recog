@@ -12,7 +12,8 @@ def column_from_csv(content, column):
     return list(map(lambda x: float(x[column]), content))
 
 def grosso(experiment_folder, target_csv, y_keys):
-    results_path = os.path.join('recognition', 'trainer', 'results', experiment_folder)
+    results_path = os.path.dirname(os.path.abspath(__file__))
+    results_path = os.path.join(results_path, experiment_folder)
     graph_name = ' '.join([experiment_folder] + target_csv.split('.')[-2].split('_'))
     print(graph_name)
 
