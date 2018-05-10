@@ -18,6 +18,7 @@ import torch
 from recognition.dataset.vgg_face2 import vggDataset
 from classifiers.evm import EVM
 from classifiers.knn import KNN
+from classifiers.brute_knn import bf_KNN as KNN
 from recognition.metrics.unconstrained_fr import all_dirs, pos_neg_from_prediction
 
 def print_dict(d):
@@ -192,8 +193,9 @@ def performance_eval(estim, fit_data, predict_data, n_samples:int, verbose=True)
     return {'fit': fit_t, 'pred': pred_t}
 
 def performance_multieval(estims:dict, samples_per_person:int, persons:int, n_samples:int, verbose=False):
-    #hidden_dataset = vggDataset('/media/Datasets/vgg_face2', 'test')#, verbose=True)
-    gallery_dataset = vggDataset('/media/Datasets/vgg_face2', 'train_aligned')
+    hidden_dataset = vggDataset('/media/Datasets/vgg_face2', 'test')#, verbose=True)
+    #gallery_dataset = vggDataset('/media/Datasets/vgg_face2', 'train_aligned')
+    gallery_dataset = hidden_dataset
 
     fit_data, _ = gallery_dataset.get_training_data(samples_per_person, 0, persons)
     predict_data, _ = gallery_dataset.get_training_data(1, 0, 1)
@@ -209,10 +211,12 @@ def performance_multieval(estims:dict, samples_per_person:int, persons:int, n_sa
 if __name__ == '__main__':
     #models = {("EVM_Red_%4d" % int(r)): EVM(redundancy_rate=r/1000.) for r in range(0, 1000, 25)}
     models = {("EVM_BiasD_%4d" % int(r)): EVM(redundancy_rate=r/1000., biased_distance=r/1000.) for r in range(400, 1000, 50)}
+
+    #models = {}
     models.update({"KNN": KNN(n_neighbors=1)})
     #print(models)
 
-    performance_multieval(models, 20, 1500, n_samples=100, verbose=True)
+    performance_multieval(models, 20, 50, n_samples=1000, verbose=True)
     '''
     performance = {
         'KNN': performance_eval(load_model('KNN.pkl'),n_samples=100),
