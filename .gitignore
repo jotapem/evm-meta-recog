@@ -4,9 +4,9 @@
 
 data
 recognition/models
-recognition/trainer/results/*/
+trainer/results/*/
+trained_models
 .idea
-test.jpg
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
