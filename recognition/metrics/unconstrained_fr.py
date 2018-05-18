@@ -2,7 +2,57 @@ import operator
 
 _UK = 'Unknown'
 
+def hide_truth(content:list)->list:
+    """
+    Force that the ground truth for predictions in content is a unknown constant _UK
+    Useful when dealing with a open-set scenario (when a recognition query might yield a negative prediction)
+    """
+    
+    hidden_content = []
+
+    for row in content:
+        hidden_row = dict(row)
+        hidden_row.update({'truth': _UK})
+
+        hidden_content.append(hidden_row)
+
+    return hidden_content
+
+def threshold_pred(content, thresh:float, logic='restrictive'):
+    """
+    Uses a threshold logic on the prediction value (similarity score) to yield negative predictions
+    logic parameter should be a function!!!!
+
+    Useful as a generic way to model a 'unkown awareness' based on a similarity/confidence score on the prediction
+    """
+    
+    assert logic in ['restrictive', 'permissive']
+
+    hidden_content = []
+
+    for row in content:
+        hidden_row = dict(row)
+        v = float(row['value'])
+        if ((logic is 'restrictive' and v > thresh) or (logic is 'permissive' and v < thresh)):
+            hidden_row.update({'prediction': _UK})
+
+        hidden_content.append(hidden_row)
+
+    return hidden_content
+
+
 def basic_metrics(content:list)->dict:
+    """
+    Returns a dictionary counting true/false positive/negatives as it iterates over the prediction list 
+    The keys looked up on content are only 'truth' and 'prediction'
+    Functions similar to threshold_pred and hide_truth should be used in order to evaluate true/positive negatives
+
+    True Positives: Query of enrolled person X Predicted the same (enrolled) person
+    True Negative: Query of enrolled person X Predicted as unknown
+    False Positive: Query of enrolled person X Predicted as any other enrolled person
+    False Negative: Query of enrolled person X Predicted as unknown
+    """
+    
     counter = {
         'total':0,
         'tp':0, 'fp': 0,

@@ -5,8 +5,8 @@ import sys
 sys.path.append(os.getcwd())
 
 
-from recognition.metrics import unconstrained_fr
-_UK = unconstrained_fr._UK
+from recognition.metrics import unconstrained_fr as ufr
+_UK = ufr._UK
 
 
 
@@ -44,32 +44,6 @@ def write_content(csv_path, content):
             writer.writerow(row)
             #print(row)
 
-def hide_truth(content):
-    hidden_content = []
-
-    for row in content:
-        hidden_row = dict(row)
-        hidden_row.update({'truth': _UK})
-
-        hidden_content.append(hidden_row)
-
-    return hidden_content
-
-def hide_pred(content, thresh, logic='restrictive'):
-    assert logic in ['restrictive', 'permissive']
-
-    hidden_content = []
-
-    for row in content:
-        hidden_row = dict(row)
-        v = float(row['value'])
-        if ((logic is 'restrictive' and v > thresh) or (logic is 'permissive' and v < thresh)):
-            hidden_row.update({'prediction': _UK})
-
-        hidden_content.append(hidden_row)
-
-    return hidden_content
-
 def relative_counter(counter):
     N = float(counter['total'])
     return {
@@ -78,7 +52,7 @@ def relative_counter(counter):
 
 # estimator specific eval
 def eval_predictions(content):
-    ev = unconstrained_fr.basic_metrics(content)
+    ev = ufr.basic_metrics(content)
 
     return relative_counter(ev)
 
@@ -89,7 +63,7 @@ def main():
 
     for exp in samples_pp:
         gallery = load_content(os.path.join(results_path, exp, 'gallery_test.csv'))
-        hidden = hide_truth(load_content(os.path.join(results_path, '10pp', 'hidden_test.csv')))
+        hidden = ufr.hide_truth(load_content(os.path.join(results_path, '10pp', 'hidden_test.csv')))
 
         evm_names = list(filter(lambda x: "EVM" in x, estimators_in_content(gallery)))
         print(evm_names)
@@ -113,11 +87,11 @@ def main():
             knn_thresh = i / float(many)
             #print("KNN", knn_thresh)
 
-            eval_hidden = eval_predictions(hide_pred(estimator_content(hidden, 'KNN'), knn_thresh))
+            eval_hidden = eval_predictions(ufr.threshold_pred(estimator_content(hidden, 'KNN'), knn_thresh))
             eval_hidden.update({'x': knn_thresh})
             hidden_content['KNN'].append(eval_hidden)
 
-            eval_gallery = eval_predictions(hide_pred(estimator_content(gallery, 'KNN'), knn_thresh))
+            eval_gallery = eval_predictions(ufr.threshold_pred(estimator_content(gallery, 'KNN'), knn_thresh))
             eval_gallery.update({'x': knn_thresh})
             gallery_content['KNN'].append(eval_gallery)
 
