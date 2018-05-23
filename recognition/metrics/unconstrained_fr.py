@@ -149,7 +149,7 @@ def roc_curve(content:list, N:int) -> dict :
 
     return roc_content
 
-def crc_curve(content:list) -> dict:
+def crr_curve(content:list) -> dict:
     """
     Evaluates a Correct Rejection Curve (similar to a ROC curve)
     TP values yield a threshold that is applied to compute TN (correct rejections)
@@ -165,16 +165,16 @@ def crc_curve(content:list) -> dict:
     rate_range = list(sorted(map(lambda t: t, set(spos))))
     rate_range_shorter = range_sample(rate_range, 1e2)
 
-    crc_content = []
+    crr_content = []
     for t in rate_range_shorter:
         tr = len(list(filter(lambda x: x>=t, spos))) / float(len(spos))
         fr = len(list(filter(lambda x: x<t, snegneg))) / float(len(snegneg))
 
-        crc_content.append({
+        crr_content.append({
             'threshold': t,
             'y': fr,
             'x': tr
         })
 
-    return crc_content
+    return crr_content
 
