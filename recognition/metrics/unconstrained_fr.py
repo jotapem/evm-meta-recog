@@ -1,6 +1,24 @@
 import operator
 
+"""
+content refers as list of dicts (prediction rows) with fields
+ truth : string
+ prediction : string
+ value : float
+other fields are not seen by this module
+"""
+
 _UK = 'Unknown'
+
+spos_filter = lambda x: x['truth'] != _UK and x['truth'] == x['prediction']
+sneg_filter = lambda x: not spos_filter(x)
+snegneg_filter = lambda x: sneg_filter(x) and x['truth'] == _UK
+
+def range_sample(r:list, how_much:int):
+    r_len = len(r)
+    how_much = r_len if r_len < how_much else int(how_much)
+    return map(lambda x: r[int(r_len*x/how_much)], range(how_much))
+    
 
 def hide_truth(content:list)->list:
     """
@@ -77,6 +95,10 @@ def basic_metrics(content:list)->dict:
     return counter
 
 def mismatches(content:list)->dict:
+    """
+    Histogram-like count of how many mismatches a label was responsible for
+    """
+    
     def count_mm(k):
         if k not in mismatches.keys():
             mismatches[k] = 0
@@ -93,62 +115,66 @@ def mismatches(content:list)->dict:
 
     return mismatches
 
-    
-"""
-this code is old (does not use the prediction/truth/value dict structure)        
-maybe doesnt need to
-"""
-def pos_neg_from_prediction(truth:list, prediction:list) -> tuple :
+def roc_curve(content:list, N:int) -> dict :
     """
-    truth: list of classes
-    prediction: list of (class, prob)
+    Evaluates a ROC (TP-vs-FP) curve (there should be the rejection ROC curve as well)
+    FP values yield a threshold that is applied to compute TP
+
+    N:int is the total number of enrolled predictions to be made. Could be computed from content under the assumptions that 
+      1) predictions from unknowns are already hidden 
+      2) every desired enrolled identification is in the prediction list
     """
-    
-    pos, neg = [], []
-    for i in range(truth.shape[0]):
-        if truth[i] == prediction[i][0]:
-            pos += [float(prediction[i][1])]
-        else:
-            neg += [float(prediction[i][1])]
-    return pos,neg
+    # splits the prediction list, mapping each row to its similarity score as a float
+    spos = list(map(lambda x: float(x['value']), filter(spos_filter, content)))
+    sneg = list(map(lambda x: float(x['value']), filter(sneg_filter, content)))
 
-def threshold_from_fp(neg:list, target_fp:int) -> float :
+    # uses S- to generate thresholds
+    sneg.sort(reverse=True)
+    rate_range = list(sorted(map(lambda t: t, set(sneg)),reverse=False))
+    rate_range_shorter = range_sample(rate_range, 1e2)
+
+
+    roc_content = []
+    #for t in rate_range:
+    for t in rate_range_shorter:
+        # clear threshold apply
+        fr = len(list(filter(lambda x: x>=t, sneg))) / float(len(sneg)) 
+        tr = len(list(filter(lambda x: x>=t, spos))) / float(N)
+
+        roc_content.append({
+            'threshold': t,
+            'x': fr,
+            'y': tr
+        })
+
+    return roc_content
+
+def crc_curve(content:list) -> dict:
     """
-    neg: list of probabilities of recognitions that did not match the ground truth
-    target_fp: desired absolute number of false identifications
-    """
+    Evaluates a Correct Rejection Curve (similar to a ROC curve)
+    TP values yield a threshold that is applied to compute TN (correct rejections)
 
-    # optim threshold to target_fp
-    '''
-    thresh_score = lambda t: len(filter(lambda x: x>=t, neg))
-
-    for x in map(lambda r: r/float(1000), range(1000, 0, -1)):
-        fp = thresh_score(x)
-        if fp < target_fp:
-            return x
-    '''
-
-    # this should do
-    assert target_fp >= 1
-    assert len(neg) >= 1
-    return sorted(neg, reverse=True)[target_fp-1]
-
-def dir_from_threshold(pos:list, threshold:float, N:int) -> float:
-    """
-    pos: list of probabilities of recognitions that matched the ground truth
-    threshold: maximum probability threshold given by a fixed False Identification index (found by threshold_from_fp)
-    N: total size of samples (could do this function "a menos de divisao por N")
+    The set of samples-to-be-rejected (snegneg) is computed from content under no assumptions
     """
 
-    return len(list(filter(lambda x: x>=threshold, pos))) / float(N)
+    spos = list(map(lambda x: float(x['value']), filter(spos_filter, content)))
+    snegneg = list(map(lambda x: float(x['value']), filter(snegneg_filter, content)))
 
-def all_dirs(pos:list, neg:list) -> list:
-    """
-    
-    """
+    # uses S+ to generate thresholds
+    spos.sort()
+    rate_range = list(sorted(map(lambda t: t, set(spos))))
+    rate_range_shorter = range_sample(rate_range, 1e2)
 
-    N = len(pos) + len(neg)
-    return list(map(
-        lambda n: dir_from_threshold(pos, threshold_from_fp(neg, n+1), N),
-        range(len(neg)-2)
-    ))
+    crc_content = []
+    for t in rate_range_shorter:
+        tr = len(list(filter(lambda x: x>=t, spos))) / float(len(spos))
+        fr = len(list(filter(lambda x: x<t, snegneg))) / float(len(snegneg))
+
+        crc_content.append({
+            'threshold': t,
+            'y': fr,
+            'x': tr
+        })
+
+    return crc_content
+
