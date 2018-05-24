@@ -18,7 +18,7 @@ import torch
 from recognition.dataset.vgg_face2 import vggDataset
 from classifiers.evm import EVM
 from classifiers.knn import KNN
-from recognition.metrics.unconstrained_fr import all_dirs, pos_neg_from_prediction
+#from recognition.metrics.unconstrained_fr import all_dirs, pos_neg_from_prediction
 
 def print_dict(d):
     for k in sorted(d.keys(),reverse=True):
@@ -72,7 +72,6 @@ def test_logging(estims:dict, data, log_out:str):
         print("Logging %s" % estim_name)
         
         Y_ = estim.predict_with_prop(X)
-        #print(p)
 
         for i in range(len(Y_)):
             pred, value = Y_[i]
@@ -82,7 +81,7 @@ def test_logging(estims:dict, data, log_out:str):
             #print(line)
             csv_content += [line]
 
-    with open(os.path.join('recognition', 'trainer', 'results', log_out), 'w') as csv_file:
+    with open(os.path.join('trainer', 'results', log_out), 'w') as csv_file:
         field_names = ['estim_name', 'prediction', 'truth', 'value']
         writer = csv.DictWriter(csv_file, fieldnames=field_names)
 
@@ -129,16 +128,12 @@ def experiment(samples_per_person:int, persons:int):
 
     
     reload_models=False # hmmmm i dont think i can get always the sample train/test split so lets not reload
-    
-
     if reload_models:
         print("Reloading pretrained models")
 
         for name, estim in estimators.items():
             estimators[name] = load_model(name+'.pkl')
-
-    # plain train
-    else:
+    else: # plain train
         print("Training raw models")
 
         for name, estim in estimators.items():
@@ -147,11 +142,12 @@ def experiment(samples_per_person:int, persons:int):
             save_model(name+'.pkl', estim)
 
     # logging test
-    OSTs = [0.0, 0.001, 0.005, 0.01, 0.02]
-    test_estimators = expand_evm(estimators['EVM'], OSTs)
-    test_estimators.update({'KNN': estimators['KNN']})
-
+    #OSTs = [0.0, 0.001, 0.005, 0.01, 0.02]
+    #test_estimators = expand_evm(estimators['EVM'], OSTs)
+    #test_estimators.update({'KNN': estimators['KNN']})
+    test_estimators = {'KNN': estimators['KNN'], 'EVM': estimators['EVM']}
     test_logging(test_estimators, test_data, os.path.join("%dpp" % samples_per_person, 'gallery_test.csv'))
+    
     hidden_data, _ = hidden_dataset.get_training_data(20) # this gives 500*20 = 10k hidden samples
     test_logging(test_estimators, hidden_data, os.path.join("%dpp" % samples_per_person, 'hidden_test.csv'))
 
