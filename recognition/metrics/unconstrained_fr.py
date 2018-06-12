@@ -11,8 +11,8 @@ other fields are not seen by this module
 _UK = 'Unknown'
 
 spos_filter = lambda x: x['truth'] != _UK and x['truth'] == x['prediction']
-sneg_filter = lambda x: not spos_filter(x)
-snegneg_filter = lambda x: sneg_filter(x) and x['truth'] == _UK
+sneg_filter = lambda x: x['truth'] != x['prediction'] and x['truth'] != _UK # accepted unknowns and mismatches
+snegneg_filter = lambda x: sneg_filter(x) and x['truth'] != _UK # mismatches
 
 def range_sample(r:list, how_much:int):
     r_len = len(r)
@@ -115,7 +115,7 @@ def mismatches(content:list)->dict:
 
     return mismatches
 
-def roc_curve(content:list, N:int) -> dict :
+def roc_curve(content:list, N:int, plot_res=int(2e2)) -> dict :
     """
     Evaluates a ROC (TP-vs-FP) curve (there should be the rejection ROC curve as well)
     FP values yield a threshold that is applied to compute TP
@@ -131,14 +131,14 @@ def roc_curve(content:list, N:int) -> dict :
     # uses S- to generate thresholds
     sneg.sort(reverse=True)
     rate_range = list(sorted(map(lambda t: t, set(sneg)),reverse=False))
-    rate_range_shorter = range_sample(rate_range, 1e2)
+    rate_range_shorter = range_sample(rate_range, plot_res)
 
 
     roc_content = []
     #for t in rate_range:
     for t in rate_range_shorter:
         # clear threshold apply
-        fr = len(list(filter(lambda x: x>=t, sneg))) / float(len(sneg)) 
+        fr = len(list(filter(lambda x: x>=t, sneg))) 
         tr = len(list(filter(lambda x: x>=t, spos))) / float(N)
 
         roc_content.append({
@@ -149,7 +149,7 @@ def roc_curve(content:list, N:int) -> dict :
 
     return roc_content
 
-def crr_curve(content:list) -> dict:
+def crr_curve(content:list, plot_res=int(2e2)) -> dict:
     """
     Evaluates a Correct Rejection Curve (similar to a ROC curve)
     TP values yield a threshold that is applied to compute TN (correct rejections)
@@ -159,15 +159,16 @@ def crr_curve(content:list) -> dict:
 
     spos = list(map(lambda x: float(x['value']), filter(spos_filter, content)))
     snegneg = list(map(lambda x: float(x['value']), filter(snegneg_filter, content)))
+    print(len(content), len(spos), len(snegneg))
 
     # uses S+ to generate thresholds
     spos.sort()
     rate_range = list(sorted(map(lambda t: t, set(spos))))
-    rate_range_shorter = range_sample(rate_range, 1e2)
+    rate_range_shorter = range_sample(rate_range, plot_res)
 
     crr_content = []
     for t in rate_range_shorter:
-        tr = len(list(filter(lambda x: x>=t, spos))) / float(len(spos))
+        tr = len(list(filter(lambda x: x>=t, spos))) 
         fr = len(list(filter(lambda x: x<t, snegneg))) / float(len(snegneg))
 
         crr_content.append({
