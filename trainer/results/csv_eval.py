@@ -80,19 +80,20 @@ def main():
         # multiple estimators on the csv, so they are filtered by name
         knn_name = 'KNN'
         evm_name = sorted(list(filter(lambda x: "EVM" in x, estimators_in_content(gallery))))[-1] # currently evaluating 1 fit params variation
-        #print(evm_name)
+        print(evm_name)
+        evm_name = 'EVM'
 
 
         for name in [knn_name, evm_name]:
             hidden_preds = estimator_content(hidden, name)
             gallery_preds = estimator_content(gallery, name)
 
-            print('Evaluating %s ROC' % name)
-            roc = ufr.roc_curve(gallery_preds+hidden_preds, len(gallery_preds))
+            print('Evaluating %s %s ROC' % (name, exp))
+            roc = ufr.roc_curve(hidden_preds+gallery_preds, len(gallery_preds))
             write_content(os.path.join(results_path, exp, '%s_roc.csv'%name[:3].lower()), roc)
 
-            print('Evaluating %s CRR' % name)
-            crr = ufr.crr_curve(gallery_preds+hidden_preds)
+            print('Evaluating %s %s CRR' % (name, exp))
+            crr = ufr.crr_curve(hidden_preds+gallery_preds)
             write_content(os.path.join(results_path, exp, '%s_crr.csv'%name[:3].lower()), crr)
 
 
