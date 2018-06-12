@@ -16,6 +16,7 @@ import torch
 #import torchvision
 
 from recognition.dataset.vgg_face2 import vggDataset
+#from recognition.dataset.vgg_arcface import vggDataset
 from classifiers.evm import EVM
 from classifiers.knn import KNN
 #from recognition.metrics.unconstrained_fr import all_dirs, pos_neg_from_prediction
@@ -74,10 +75,20 @@ def test_logging(estims:dict, data, log_out:str):
         Y_ = estim.predict_with_prop(X)
 
         for i in range(len(Y_)):
+            def format_value(f):
+                #print('trying to format %s of type %s' % (f, type(f)))
+                return '%.10f' % float(f)
+            
             pred, value = Y_[i]
+            print(pred, value, Y_[i])
             truth = Y[i]
             
-            line = {'estim_name': estim_name, 'prediction': pred, 'truth': truth, 'value': value}
+            line = {
+                'estim_name': estim_name,
+                'prediction': pred,
+                'truth': truth,
+                'value': format_value(value)
+            }
             #print(line)
             csv_content += [line]
 
@@ -115,19 +126,22 @@ def expand_evm(estim, param_ranges) -> dict:
 
 
 # the gold (o grosso)
-def experiment(samples_per_person:int, persons:int):
-    hidden_dataset = vggDataset('/media/Datasets/vgg_face2', 'test')#, verbose=True)
-    gallery_dataset = vggDataset('/media/Datasets/vgg_face2', 'train_aligned')
-    
+def experiment(samples_per_person:int, persons:int, verbose=False):
+    hidden_dataset = vggDataset('/media/Datasets/vgg_face2', 'test', verbose=verbose)
+    gallery_dataset = vggDataset('/media/Datasets/vgg_face2', 'train_aligned', verbose=verbose)
+
+    hidden_data, _ = hidden_dataset.get_training_data(20) # this gives 500*20 = 10k hidden samples
+    #hidden_data, _ = hidden_dataset.get_training_data(1) # useful for debugging
     train_data, test_data = gallery_dataset.get_training_data(samples_per_person, samples_test=5, persons_limit=persons) # this gives persons * 5 gallery test samples
 
     estimators = { # this is a dict estimator like a data type (e.g return of expand_evm())
-        'EVM': EVM(open_set_threshold=0.0),
+        'EVM': EVM(open_set_threshold=0.0, tail=len(train_data)),
         'KNN': KNN(n_neighbors=1)
     }
 
     
     reload_models=False # hmmmm i dont think i can get always the sample train/test split so lets not reload
+    #reload_models=True # useful when debugging
     if reload_models:
         print("Reloading pretrained models")
 
@@ -146,15 +160,12 @@ def experiment(samples_per_person:int, persons:int):
     #test_estimators = expand_evm(estimators['EVM'], OSTs)
     #test_estimators.update({'KNN': estimators['KNN']})
     test_estimators = {'KNN': estimators['KNN'], 'EVM': estimators['EVM']}
+
     test_logging(test_estimators, test_data, os.path.join("%dpp" % samples_per_person, 'gallery_test.csv'))
-    
-    hidden_data, _ = hidden_dataset.get_training_data(20) # this gives 500*20 = 10k hidden samples
     test_logging(test_estimators, hidden_data, os.path.join("%dpp" % samples_per_person, 'hidden_test.csv'))
 
 
 def performance_eval(estim, fit_data, predict_data, n_samples:int, verbose=True):
-    
-
     fit_x, fit_y = fit_data
     vprint("doing a fit", verbose)
     fit_t = measure_call(lambda: estim.fit(fit_x, fit_y), verbose=True, n_samples=5)#n_samples)
