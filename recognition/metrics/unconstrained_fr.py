@@ -128,11 +128,14 @@ def roc_curve(content:list, N:int, plot_res=int(2e2)) -> dict :
     spos = list(map(lambda x: float(x['value']), filter(spos_filter, content)))
     sneg = list(map(lambda x: float(x['value']), filter(sneg_filter, content)))
 
+    #print('spos limits %f, %f' % (spos[0], spos[-1]))
+    #print('sneg limits %f, %f' % (sneg[0], sneg[-1]))
+    #print(len(content), N, len(spos), len(sneg))
+
     # uses S- to generate thresholds
     sneg.sort(reverse=True)
     rate_range = list(sorted(map(lambda t: t, set(sneg)),reverse=False))
     rate_range_shorter = range_sample(rate_range, plot_res)
-
 
     roc_content = []
     #for t in rate_range:
@@ -141,12 +144,15 @@ def roc_curve(content:list, N:int, plot_res=int(2e2)) -> dict :
         fr = len(list(filter(lambda x: x>=t, sneg))) 
         tr = len(list(filter(lambda x: x>=t, spos))) / float(N)
 
-        roc_content.append({
+        metrics = {
             'threshold': t,
             'x': fr,
             'y': tr
-        })
+        }
 
+        roc_content.append(metrics)
+
+    #print(sorted(roc_content, key=lambda x: x['y'], reverse=True)[:10])
     return roc_content
 
 def crr_curve(content:list, plot_res=int(2e2)) -> dict:
