@@ -3,7 +3,7 @@
 *nohup.out
 
 data
-recognition/models
+models/*
 trainer/results/*/
 trained_models
 .idea
