@@ -125,7 +125,10 @@ class EVM(BaseEstimator):
             if prop > max_prop:
                 max_prop = prop
                 max_class = i
-        return (max_class, max_prop) if max_prop >= self.open_set_threshold else (EVM.UNKNOWN, 1 - max_prop)
+
+        def prop_to_str(p):
+            return '%.30f' % p
+        return (max_class, prop_to_str(max_prop)) if max_prop >= self.open_set_threshold else (EVM.UNKNOWN, prop_to_str(1. - max_prop))
 
     def _predict_class(self, item):
         row, class_index = item
