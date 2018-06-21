@@ -75,19 +75,25 @@ def test_logging(estims:dict, data, log_out:str):
         Y_ = estim.predict_with_prop(X)
 
         for i in range(len(Y_)):
-            def format_value(f):
-                #print('trying to format %s of type %s' % (f, type(f)))
-                return '%.10f' % float(f)
-            
             pred, value = Y_[i]
-            print(pred, value, Y_[i])
+
+            '''
+            try:
+                fvalue = float(value)
+                sfvalue = str(value)
+            except:
+                print(pred, value, type(pred), type(value), Y_[i])
+                print(Y_)
+                raise ValueError
+            '''
+
             truth = Y[i]
             
             line = {
                 'estim_name': estim_name,
                 'prediction': pred,
                 'truth': truth,
-                'value': format_value(value)
+                'value': value
             }
             #print(line)
             csv_content += [line]
@@ -135,7 +141,7 @@ def experiment(samples_per_person:int, persons:int, verbose=False):
     train_data, test_data = gallery_dataset.get_training_data(samples_per_person, samples_test=5, persons_limit=persons) # this gives persons * 5 gallery test samples
 
     estimators = { # this is a dict estimator like a data type (e.g return of expand_evm())
-        'EVM': EVM(open_set_threshold=0.0, tail=len(train_data)),
+        'EVM': EVM(open_set_threshold=0.0, tail=samples_per_person),
         'KNN': KNN(n_neighbors=1)
     }
 
@@ -212,6 +218,8 @@ if __name__ == '__main__':
     if mode == 'experiment':
         persons = 8000
         per_person_samples = [10, 20, 50]
+
+        #persons, per_person_samples = int(6*1e3), [10]#, 20, 50] # debug
         
         for pp in per_person_samples:
             experiment(pp, persons)
