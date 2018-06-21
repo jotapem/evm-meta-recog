@@ -7,7 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from csv_eval import load_content
+from csv_eval import load_content, csv_parser
 
 def column_from_csv(content, column):
     return list(map(lambda x: float(x[column]), content))
@@ -49,14 +49,14 @@ def plain_thresh(exp, estim, test):
 
     lazy_thresh_plot(exp, target_csv, keys)
 
-def plot_curves(contents:dict, out_path:str, curve_type:str):
+def plot_curves(contents:dict, out_path:str, curve_type:str, extra_title=''):
     """
     Contents is a dictionary where keys are the estimator name (plot label) and the values are predictions rows
     """
 
     fig = plt.figure()
     ax = plt.subplot(111)
-    for estim_name, content in contents.items():
+    for estim_name, content in sorted(contents.items()):
         x_key = 'x'
         y_key = 'y'
         
@@ -68,23 +68,23 @@ def plot_curves(contents:dict, out_path:str, curve_type:str):
     plt.ylim([0,1])
 
     if curve_type == 'roc':
-        plt.title('ROC (Correctly Identified vs Mistakenly Identified) curve')
+        plt.title('ROC (Correctly Identified vs Mistakenly Identified) curve %s' % extra_title)
     elif curve_type == 'crr':
-        plt.title('CRR (Correctly Rejected vs Correctly Identified) curve')
+        plt.title('CRR (Correctly Rejected vs Correctly Identified) curve %s' % extra_title)
         
 
     fig.savefig(out_path)
     plt.close(fig)
 
-def main():
-    file_dir = os.path.dirname(os.path.abspath(__file__))
+def main(file_dir):
+    #file_dir = os.path.dirname(os.path.abspath(__file__))
     estims = ['knn', 'evm']
     
     for exp in ['10pp', '20pp', '50pp']:
         # ROC / CRR plots
         for curve in ['roc', 'crr']:
             curve_contents = {estim: load_content(os.path.join(file_dir, exp, '%s_%s.csv' % (estim, curve))) for estim in estims}
-            plot_curves(curve_contents, os.path.join(file_dir, exp, '%s.png' % curve), curve)
+            plot_curves(curve_contents, os.path.join(file_dir, exp, '%s.png' % curve), curve, extra_title='[%s]'%exp)
 
         # Open Set / Euclidean Distance threshold plots
         for test in ['gallery', 'hidden']:
@@ -93,4 +93,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = csv_parser()
+    args = parser.parse_args() ; print(args)
+    
+    main(args.results_path)
