@@ -8,6 +8,15 @@ sys.path.append(os.getcwd())
 from recognition.metrics import unconstrained_fr as ufr
 _UK = ufr._UK
 
+import argparse
+
+def csv_parser():
+    parser = argparse.ArgumentParser(description='Seeks a directory yielding prediction results as CSV files')
+
+    parser.add_argument('results_path', metavar='P', type=str)
+
+    return parser
+
 
 
 
@@ -16,7 +25,15 @@ def estimator_content(content:list, estim_name:str) -> list:
     Filters the predictions list (content) by a estimator name
     """
     
-    return list(filter(lambda x: x['estim_name'] == estim_name, content))
+    #return list(filter(lambda x: x['estim_name'] == estim_name, content))
+    e_content = []
+    for c in content:
+        if c['estim_name'] == estim_name:
+            if estim_name == 'KNN':
+                c['value'] = '%.30f' % -float(c['value'])
+            e_content.append(c)
+    return e_content
+            
 
 def estimators_in_content(content:list) -> list:
     """
@@ -51,6 +68,7 @@ def write_content(csv_path, content):
             for k in row.keys():
                 if type(row[k]) is float: # safe str conversion
                     row[k] = '%.20f' % row[k]
+
                     
             writer.writerow(row)
             #print(row)
@@ -64,9 +82,10 @@ def relative_counter(counter):
 
 
 
-def main():
-    results_path = os.path.dirname(os.path.abspath(__file__))
+def main(results_path):
+    #results_path = os.path.dirname(os.path.abspath(__file__))
     samples_pp = ['10pp', '20pp', '50pp']
+    #samples_pp = ['10pp'] # debug
 
 
 
@@ -88,6 +107,13 @@ def main():
             hidden_preds = estimator_content(hidden, name)
             gallery_preds = estimator_content(gallery, name)
 
+            gallery_basic_metrics = ufr.basic_metrics(gallery_preds)
+            print('%s %s Gallery basic metrics: %s' % (name, exp, str(gallery_basic_metrics)))
+
+            hidden_basic_metrics = ufr.basic_metrics(hidden_preds)
+            print('%s %s Hidden basic metrics: %s' % (name, exp, str(hidden_basic_metrics)))
+            
+            
             print('Evaluating %s %s ROC' % (name, exp))
             roc = ufr.roc_curve(hidden_preds+gallery_preds, len(gallery_preds))
             write_content(os.path.join(results_path, exp, '%s_roc.csv'%name[:3].lower()), roc)
@@ -99,4 +125,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = csv_parser()
+    args = parser.parse_args() ; print(args)
+    
+    main(args.results_path)
